@@ -1,20 +1,34 @@
 package com.example.courselink1;
 
 import javafx.application.Application;
+import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.Scene;
 import javafx.scene.control.*;
-import javafx.scene.layout.VBox;
+import javafx.scene.layout.*;
 import javafx.stage.Stage;
-import java.util.ArrayList;
+import javafx.collections.FXCollections;
+import javafx.collections.ObservableList;
+
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 
 public class HelloApplication extends Application {
     private Stage primaryStage;
-    private List<String> courses = new ArrayList<>();
-    private List<String> students = new ArrayList<>();
+    private BorderPane rootLayout;
+    private VBox contentArea;
+    private String currentUser;  // Store logged-in user
+
+    private static final Map<String, String> users = new HashMap<>();
+    private static final Map<String, String> roles = new HashMap<>();
+    private static final ObservableList<String> courses = FXCollections.observableArrayList();
+    private static final Map<String, ObservableList<String>> studentEnrollments = new HashMap<>();
+
+    static {
+        // Default Admin Account
+        users.put("admin", "admin123");
+        roles.put("admin", "Admin");
+    }
 
     public static void main(String[] args) {
         launch(args);
@@ -26,6 +40,7 @@ public class HelloApplication extends Application {
         showLoginScreen();
     }
 
+    // Show login screen
     private void showLoginScreen() {
         VBox loginLayout = new VBox(15);
         loginLayout.setAlignment(Pos.CENTER);
@@ -36,28 +51,26 @@ public class HelloApplication extends Application {
 
         TextField userField = new TextField();
         userField.setPromptText("Username");
-        userField.setStyle("-fx-pref-width: 250px; -fx-background-color: #2C2C2C; -fx-text-fill: white;");
+        userField.setStyle("-fx-pref-width: 250px;");
 
         PasswordField passField = new PasswordField();
         passField.setPromptText("Password");
-        passField.setStyle("-fx-pref-width: 250px; -fx-background-color: #2C2C2C; -fx-text-fill: white;");
+        passField.setStyle("-fx-pref-width: 250px;");
 
         Button loginButton = new Button("Log in");
-        loginButton.setStyle("-fx-background-color: #1877F2; -fx-text-fill: white; -fx-font-size: 14px;");
-
         Label messageLabel = new Label();
         messageLabel.setStyle("-fx-text-fill: red;");
 
         loginButton.setOnAction(e -> {
             String username = userField.getText();
             String password = passField.getText();
-            if (Database.authenticate(username, password)) {
-                showDashboard(Database.getUserRole(username));
+            if (users.containsKey(username) && users.get(username).equals(password)) {
+                currentUser = username; // Store current user
+                showDashboard(roles.get(username), username);
             } else {
                 messageLabel.setText("Invalid credentials!");
             }
         });
-
 
         loginLayout.getChildren().addAll(titleLabel, userField, passField, loginButton, messageLabel);
         primaryStage.setScene(new Scene(loginLayout, 350, 400));
@@ -65,101 +78,152 @@ public class HelloApplication extends Application {
         primaryStage.show();
     }
 
-    private void showDashboard(String role) {
-        VBox dashboardLayout = new VBox(10);
-        dashboardLayout.setAlignment(Pos.CENTER);
-        dashboardLayout.setStyle("-fx-background-color: #121212;");
+    // Show dashboard with Logout functionality
+    private void showDashboard(String role, String username) {
+        rootLayout = new BorderPane();
+        rootLayout.setStyle("-fx-background-color: #F0F2F5;");
 
-        Label welcomeLabel = new Label("Welcome, " + role);
-        welcomeLabel.setStyle("-fx-text-fill: white; -fx-font-size: 20px;");
+        // Top Bar
+        HBox topBar = new HBox();
+        topBar.setStyle("-fx-background-color: #1E3A8A; -fx-padding: 10px;");
+        topBar.setAlignment(Pos.CENTER_RIGHT);
+        topBar.setSpacing(10);
 
-        Button manageCoursesButton = new Button("Manage Courses");
-        manageCoursesButton.setOnAction(e -> showCourseManagement(role));
+        // Three-Dot Menu Button
+        Button menuButton = new Button("⋮");
+        menuButton.setStyle("-fx-font-size: 20px; -fx-background-color: transparent; -fx-text-fill: white;");
 
-        Button manageStudentsButton = new Button("Manage Students");
-        manageStudentsButton.setOnAction(e -> showStudentManagement(role));
+        // Dropdown Menu (Context Menu)
+        ContextMenu menu = new ContextMenu();
+        MenuItem eventsItem = new MenuItem("📅 Events");
+        MenuItem coursesItem = new MenuItem("📖 Courses");
+        MenuItem studentsItem = new MenuItem("👥 Students");
+        MenuItem adminPanel = new MenuItem("⚙️ Admin Panel");
+        MenuItem logoutItem = new MenuItem("🚪 Logout");  // Logout Option
 
-        Button logoutButton = new Button("Logout");
-        logoutButton.setStyle("-fx-background-color: #E74C3C; -fx-text-fill: white;");
-        logoutButton.setOnAction(e -> showLoginScreen());
+        if (role.equals("Admin")) {
+            menu.getItems().addAll(adminPanel, eventsItem, coursesItem, studentsItem, new SeparatorMenuItem(), logoutItem);
+            adminPanel.setOnAction(e -> showAdminPanel());
+        } else {
+            menu.getItems().addAll(eventsItem, coursesItem, studentsItem, new SeparatorMenuItem(), logoutItem);
+        }
 
-        dashboardLayout.getChildren().addAll(welcomeLabel, manageCoursesButton, manageStudentsButton, logoutButton);
-        primaryStage.setScene(new Scene(dashboardLayout, 350, 400));
+        menuButton.setOnAction(e -> menu.show(menuButton, javafx.geometry.Side.BOTTOM, 0, 0));
+
+        // Logout Functionality (Return to Login)
+        logoutItem.setOnAction(e -> {
+            currentUser = null;  // Clear session data
+            showLoginScreen();
+        });
+
+        eventsItem.setOnAction(e -> showEventManagement());
+        coursesItem.setOnAction(e -> showCourseManagement());
+        studentsItem.setOnAction(e -> showStudentManagement(username));
+
+        topBar.getChildren().add(menuButton);
+        rootLayout.setTop(topBar);
+
+        contentArea = new VBox();
+        contentArea.setAlignment(Pos.CENTER);
+        contentArea.getChildren().add(new Label("Select an option from the menu"));
+        rootLayout.setCenter(contentArea);
+
+        primaryStage.setScene(new Scene(rootLayout, 800, 500));
     }
 
-    private void showCourseManagement(String role) {
+    // Admin Panel (Add Students & Courses)
+    private void showAdminPanel() {
+        VBox adminLayout = new VBox(15);
+        adminLayout.setPadding(new Insets(20));
+        adminLayout.getChildren().add(new Label("⚙️ Admin Panel"));
+
+        // Add Student Section
+        TextField studentNameField = new TextField();
+        studentNameField.setPromptText("Enter student username");
+        Button addStudentButton = new Button("Add Student");
+
+        addStudentButton.setOnAction(e -> {
+            String studentName = studentNameField.getText();
+            if (!studentName.isEmpty() && !users.containsKey(studentName)) {
+                users.put(studentName, "password123"); // Default password
+                roles.put(studentName, "Student");
+                studentEnrollments.put(studentName, FXCollections.observableArrayList());
+                showAlert("Success", "Student added! Default password: password123");
+                studentNameField.clear();
+            }
+        });
+
+        // Add Course Section
+        TextField courseNameField = new TextField();
+        courseNameField.setPromptText("Enter course name");
+        Button addCourseButton = new Button("Add Course");
+
+        addCourseButton.setOnAction(e -> {
+            String courseName = courseNameField.getText();
+            if (!courseName.isEmpty() && !courses.contains(courseName)) {
+                courses.add(courseName);
+                showAlert("Success", "Course added!");
+                courseNameField.clear();
+            }
+        });
+
+        adminLayout.getChildren().addAll(new Label("Add Student"), studentNameField, addStudentButton,
+                new Label("Add Course"), courseNameField, addCourseButton);
+        contentArea.getChildren().setAll(adminLayout);
+    }
+
+    // Show Event Management
+    private void showEventManagement() {
+        VBox eventLayout = new VBox(10);
+        eventLayout.setPadding(new Insets(20));
+        eventLayout.getChildren().add(new Label("📅 Event Management"));
+        ListView<String> eventList = new ListView<>();
+        eventList.getItems().addAll("Tech Seminar", "Workshop on AI", "Networking Event");
+        eventLayout.getChildren().add(eventList);
+        contentArea.getChildren().setAll(eventLayout);
+    }
+
+    // Show Course Management
+    private void showCourseManagement() {
         VBox courseLayout = new VBox(10);
-        Label courseLabel = new Label("Course Management");
-        ListView<String> courseList = new ListView<>();
-        courseList.getItems().addAll(courses);
-        Button backButton = new Button("Back");
-        backButton.setOnAction(e -> showDashboard(role));
-
-        if (role.equals("Admin")) {
-            TextField courseField = new TextField();
-            Button addCourseButton = new Button("Add Course");
-            addCourseButton.setOnAction(e -> {
-                String newCourse = courseField.getText();
-                if (!newCourse.isEmpty()) {
-                    courses.add(newCourse);
-                    courseList.getItems().add(newCourse);
-                    courseField.clear();
-                }
-            });
-            courseLayout.getChildren().addAll(courseLabel, courseField, addCourseButton, courseList, backButton);
-        } else {
-            courseLayout.getChildren().addAll(courseLabel, courseList, backButton);
-        }
-        primaryStage.setScene(new Scene(courseLayout, 400, 300));
+        courseLayout.setPadding(new Insets(20));
+        courseLayout.getChildren().add(new Label("📖 Course Management"));
+        ListView<String> courseList = new ListView<>(courses);
+        courseLayout.getChildren().add(courseList);
+        contentArea.getChildren().setAll(courseLayout);
     }
 
-    private void showStudentManagement(String role) {
+    // Show Student Management (Admin Can Enroll Students)
+    private void showStudentManagement(String username) {
         VBox studentLayout = new VBox(10);
-        Label studentLabel = new Label("Student Management");
-        ListView<String> studentList = new ListView<>();
-        studentList.getItems().addAll(students);
-        Button backButton = new Button("Back");
-        backButton.setOnAction(e -> showDashboard(role));
+        studentLayout.setPadding(new Insets(20));
+        studentLayout.getChildren().add(new Label("👥 Student Management"));
 
-        if (role.equals("Admin")) {
-            TextField studentField = new TextField();
-            Button addStudentButton = new Button("Add Student");
-            addStudentButton.setOnAction(e -> {
-                String newStudent = studentField.getText();
-                if (!newStudent.isEmpty()) {
-                    students.add(newStudent);
-                    studentList.getItems().add(newStudent);
-                    studentField.clear();
+        if ("Admin".equals(roles.get(username))) {
+            ComboBox<String> studentDropdown = new ComboBox<>(FXCollections.observableArrayList(users.keySet()));
+            ComboBox<String> courseDropdown = new ComboBox<>(courses);
+            Button enrollButton = new Button("Enroll Student");
+
+            enrollButton.setOnAction(e -> {
+                String student = studentDropdown.getValue();
+                String course = courseDropdown.getValue();
+                if (student != null && course != null) {
+                    studentEnrollments.get(student).add(course);
+                    showAlert("Success", "Student enrolled!");
                 }
             });
-            studentLayout.getChildren().addAll(studentLabel, studentField, addStudentButton, studentList, backButton);
-        } else {
-            studentLayout.getChildren().addAll(studentLabel, studentList, backButton);
+
+            studentLayout.getChildren().addAll(new Label("Enroll Students"), studentDropdown, courseDropdown, enrollButton);
         }
-        primaryStage.setScene(new Scene(studentLayout, 400, 300));
-    }
-}
 
-class Database {
-    private static final Map<String, String> users = new HashMap<>();
-    private static final Map<String, String> roles = new HashMap<>();
-
-    static {
-        users.put("admin", "admin123");
-        roles.put("admin", "Admin");
-
-        users.put("student1", "password1");
-        roles.put("student1", "Student");
-
-        users.put("faculty1", "password2");
-        roles.put("faculty1", "Faculty");
+        contentArea.getChildren().setAll(studentLayout);
     }
 
-    public static boolean authenticate(String username, String password) {
-        return users.containsKey(username) && users.get(username).equals(password);
-    }
-
-    public static String getUserRole(String username) {
-        return roles.get(username);
+    // Utility: Show Alerts
+    private void showAlert(String title, String message) {
+        Alert alert = new Alert(Alert.AlertType.INFORMATION);
+        alert.setTitle(title);
+        alert.setContentText(message);
+        alert.showAndWait();
     }
 }
