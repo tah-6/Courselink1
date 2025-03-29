@@ -1,0 +1,11 @@
+Student ID,Name,Address,Telephone,Email,Academic Level,Current Semester,Profile Photo,Subjects Registered,Thesis Title,Progress,Password
+S20250001,Alice Smith,123 Maple St.,555-1234,alice@example.edu,Undergraduate,Fall 2025,default,ENG101,_,0.4,default123
+S20250002,Bob Johnson,456 Oak St.,555-5678,bob@example.edu,Graduate,Fall 2025,default,CS201,"""The detection of oil under ice by remote mode conversion of ultrasound""",0.5,default123
+S20250003,Carol Williams,789 Pine St.,555-9012,carol@example.edu,Graduate,Fall 2025,default,"ENGG402, HIST101","""On the economic optimality of marine reserves when fishing damages habitat""",0.5,default123
+S20250004,Lucka Racki,1767 Jane St.,439-9966,lucka@example.edu,Undergraduate,Fall 2025,default,Bio300,_,0.6,default123
+S20250005,David Lee,90 Elm St.,555-3456,lee@example.edu,Undergraduate,Fall 2025,default,HIST101,-,0.5,default123
+S20250006,Emily Brown,111 Oak Ave.,555-7890,brown@example.edu,Graduate,Fall 2025,default,Chem200,Synthesis and Characterization of Novel Catalysts,0.5,default123
+S20250007,George Smith,222 Pine Rd.,555-2345,smith@example.edu,Undergraduate,Fall 2025,default,Music102,-,0.4,default123
+S20250008,Helen Jones,333 Maple Dr.,555-4567,jones@example.edu,Graduate,Fall 2025,default,"PSYCHO100, Music102, HIST101",The Effects of Stress on Cognitive Function,0.5,default123
+S20250009,Isaac Clark,444 Cedar Ln.,555-8901,clark@example.edu,Undergraduate,Fall 2025,default,BIo300,_,0.5,default123
+S20250010,Jennifer Davis,555 Oakwood Pl.,555-3456,davis@example.edu,Graduate,Fall 2025,default,HIST101,"The Renaissance: Art, Culture, and Society",0.2,default123

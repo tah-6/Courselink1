@@ -1,0 +1,6 @@
+Faculty ID,Name,Degree,Research Interest,Email,Office Location,Courses Offered,Password
+F0001,Dr. Alan Turing,Ph.D.,Computational Theory,turing@university.edu,Room 201,Calculus I,default123
+F0002,Prof. Emily Brontë,Master's,English Literature,bronte@university.edu,Room 202,Literature Basics,default123
+F0003,Dr. Grace Hopper,Ph.D.,Computer Programming,hopper@university.edu,Lab 203,Intro to Programming,default123
+F0004,Dr. Lakyn Copeland,Master's,English Literature,copeland@university.edu,Room 201,Introduction to French,default123
+F0005,Albozr Gharabaghi,Ph.D.,Water and Soil,gharabaghi@university.edu,Lab 202,Water Resources,default123
