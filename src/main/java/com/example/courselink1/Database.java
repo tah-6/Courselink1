@@ -6,7 +6,7 @@ import java.util.Map;
 class Database {
     private static final Map<String, String> users = new HashMap<>();
     private static final Map<String, String> roles = new HashMap<>();
-    private static final Map<String, Event> events = new HashMap<>(); // Store events
+    private static final Map<String, Event> events = new HashMap<>();
 
     Database() {}
 
@@ -18,20 +18,30 @@ class Database {
         return roles.get(username);
     }
 
+    public static void addUser(String username, String password, String role) {
+        users.put(username, password);
+        roles.put(username, role);
+    }
+
+    public static void removeUser(String username) {
+        users.remove(username);
+        roles.remove(username);
+    }
+
     public static void addEvent(Event event) {
-        events.put(event.getEventCode(), event); // Add event
+        events.put(event.getEventCode(), event);
     }
 
     public static void deleteEvent(String eventCode) {
-        events.remove(eventCode); // Delete event
+        events.remove(eventCode);
     }
 
     public static Event getEvent(String eventCode) {
-        return events.get(eventCode); // Retrieve event by code
+        return events.get(eventCode);
     }
 
     public static Map<String, Event> getAllEvents() {
-        return events; // Get all events
+        return events;
     }
 
     public static void registerStudentForEvent(String eventCode, String studentName) {
@@ -41,17 +51,21 @@ class Database {
         }
     }
 
+    public static boolean isAdmin(String username) {
+        return "Admin".equalsIgnoreCase(getUserRole(username));
+    }
+
+    public static boolean isFaculty(String username) {
+        return "Faculty".equalsIgnoreCase(getUserRole(username));
+    }
+
     static {
-        // Sample users
-        users.put("admin", "admin123");
-        roles.put("admin", "Admin");
-        users.put("student1", "password1");
-        roles.put("student1", "Student");
-        users.put("faculty1", "password2");
-        roles.put("faculty1", "Faculty");
+        // Load users from CSV file using CSVLoader
+        CSVLoader.loadUsersWithRoles();
+        users.putAll(CSVLoader.users);
+        roles.putAll(CSVLoader.roles);
 
         // Sample event
         events.put("EV001", new Event("EV001", "Tech Seminar", "Learn about the latest tech trends", "Room 101", "2025-05-10 10:00", 50, "Free", "Admin"));
     }
 }
-
