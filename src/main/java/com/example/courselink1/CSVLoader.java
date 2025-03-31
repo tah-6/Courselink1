@@ -2,6 +2,7 @@ package com.example.courselink1;
 
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
+import javafx.scene.control.TextInputDialog;
 
 import java.io.*;
 import java.nio.charset.StandardCharsets;
@@ -16,7 +17,8 @@ class CSVLoader {
 
     public static void loadUsersWithRoles() {
         try (BufferedReader br = new BufferedReader(new InputStreamReader(
-                Objects.requireNonNull(CSVLoader.class.getResourceAsStream("/Students.csv")), StandardCharsets.UTF_8))) {
+                Objects.requireNonNull(CSVLoader.class.getResourceAsStream("/Students.csv")),
+                StandardCharsets.UTF_8))) {
             String line;
             boolean firstRow = true;
             while ((line = br.readLine()) != null) {
@@ -49,7 +51,8 @@ class CSVLoader {
     public static ObservableList<String> loadSubjects() {
         ObservableList<String> subjects = FXCollections.observableArrayList();
         try (BufferedReader br = new BufferedReader(new InputStreamReader(
-                Objects.requireNonNull(CSVLoader.class.getResourceAsStream("/Subjects.csv")), StandardCharsets.UTF_8))) {
+                Objects.requireNonNull(CSVLoader.class.getResourceAsStream("/Subjects.csv")),
+                StandardCharsets.UTF_8))) {
             String line;
             while ((line = br.readLine()) != null) {
                 subjects.add(line.trim());
@@ -74,10 +77,25 @@ class CSVLoader {
         return courses;
     }
 
+    public static ObservableList<String> loadFaculty() {
+        ObservableList<String> faculty = FXCollections.observableArrayList();
+        try (BufferedReader br = new BufferedReader(new InputStreamReader(
+                Objects.requireNonNull(CSVLoader.class.getResourceAsStream("/Faculties.csv")), StandardCharsets.UTF_8))) {
+            String line;
+            while ((line = br.readLine()) != null) {
+                faculty.add(line.trim());
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        return faculty;
+    }
+
     public static ObservableList<String> loadStudents() {
         ObservableList<String> students = FXCollections.observableArrayList();
         try (BufferedReader br = new BufferedReader(new InputStreamReader(
-                Objects.requireNonNull(CSVLoader.class.getResourceAsStream("/Students.csv")), StandardCharsets.UTF_8))) {
+                Objects.requireNonNull(CSVLoader.class.getResourceAsStream("/Students.csv")),
+                StandardCharsets.UTF_8))) {
             String line;
             while ((line = br.readLine()) != null) {
                 students.add(line.trim());
@@ -103,24 +121,145 @@ class CSVLoader {
     }
 
     public static void addSubject(String subject) {
-        try (PrintWriter out = new PrintWriter(new FileWriter("./Subjects.csv", true))) {
+        try (PrintWriter out = new PrintWriter(new FileWriter("src/main/resources/Subjects.csv", true))) {
             out.println(subject);
         } catch (IOException e) {
             e.printStackTrace();
         }
     }
+    public static void addFaculty() {
+        try (BufferedWriter out = new BufferedWriter(new FileWriter("src/main/resources/Faculties.csv", true))) {
+            TextInputDialog dialog = new TextInputDialog();
+            dialog.setTitle("Add Faculty");
 
-    public static void addCourse(String course) {
-        try (PrintWriter out = new PrintWriter(new FileWriter("./Courses.csv", true))) {
-            out.println(course);
+            dialog.setHeaderText("Enter Faculty ID:");
+            String facultyID = dialog.showAndWait().orElse("");
+
+            dialog.setHeaderText("Enter Name:");
+            String name = dialog.showAndWait().orElse("");
+
+            dialog.setHeaderText("Enter Degree:");
+            String degree = dialog.showAndWait().orElse("");
+
+            dialog.setHeaderText("Enter Research Interest:");
+            String researchInterest = dialog.showAndWait().orElse("");
+
+            dialog.setHeaderText("Enter Email:");
+            String email = dialog.showAndWait().orElse("");
+
+            dialog.setHeaderText("Enter Office Location:");
+            String officeLocation = dialog.showAndWait().orElse("");
+
+            dialog.setHeaderText("Enter Courses Offered:");
+            String coursesOffered = dialog.showAndWait().orElse("");
+
+            dialog.setHeaderText("Enter Password:");
+            String password = dialog.showAndWait().orElse("");
+
+            String line = String.join(",", facultyID, name, degree, researchInterest, email, officeLocation, coursesOffered, password);
+            out.write(line);
+            out.newLine();
+
+            System.out.println("Faculty added successfully!");
         } catch (IOException e) {
             e.printStackTrace();
         }
     }
 
-    public static void addStudent(String student) {
-        try (BufferedWriter out = new BufferedWriter(new FileWriter("Students.csv", true))) {
-            out.write(student);
+    public static void addCourse() {
+        try (BufferedWriter out = new BufferedWriter(new FileWriter("src/main/resources/Courses.csv", true))) {
+            TextInputDialog dialog = new TextInputDialog();
+            dialog.setTitle("Add Course");
+
+            dialog.setHeaderText("Enter Course Code:");
+            String courseCode = dialog.showAndWait().orElse("");
+
+            dialog.setHeaderText("Enter Course Name:");
+            String courseName = dialog.showAndWait().orElse("");
+
+            dialog.setHeaderText("Enter Subject Code:");
+            String subjectCode = dialog.showAndWait().orElse("");
+
+            dialog.setHeaderText("Enter Section Number:");
+            String sectionNumber = dialog.showAndWait().orElse("");
+
+            dialog.setHeaderText("Enter Capacity:");
+            String capacity = dialog.showAndWait().orElse("");
+
+            dialog.setHeaderText("Enter Lecture Time:");
+            String lectureTime = dialog.showAndWait().orElse("");
+
+            dialog.setHeaderText("Enter Final Exam Date/Time:");
+            String examDateTime = dialog.showAndWait().orElse("");
+
+            dialog.setHeaderText("Enter Location:");
+            String location = dialog.showAndWait().orElse("");
+
+            dialog.setHeaderText("Enter Teacher Name:");
+            String teacherName = dialog.showAndWait().orElse("");
+
+            String line = String.join(",", courseCode, courseName, subjectCode, sectionNumber, capacity, lectureTime,
+                    examDateTime, location, teacherName);
+            out.write(line);
+            out.newLine();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+
+    public static void addStudent() {
+        try (BufferedWriter out = new BufferedWriter(new FileWriter("src/main/resources/Students.csv", true))) {
+            TextInputDialog dialog = new TextInputDialog();
+            dialog.setTitle("Add Student");
+
+            dialog.setHeaderText("Enter Student ID:");
+            String studentID = dialog.showAndWait().orElse("");
+
+            dialog.setHeaderText("Enter Name:");
+            String name = dialog.showAndWait().orElse("");
+
+            dialog.setHeaderText("Enter Address:");
+            String address = dialog.showAndWait().orElse("");
+
+            dialog.setHeaderText("Enter Telephone:");
+            String telephone = dialog.showAndWait().orElse("");
+
+            dialog.setHeaderText("Enter Email:");
+            String email = dialog.showAndWait().orElse("");
+
+            dialog.setHeaderText("Enter Academic Level:");
+            String academicLevel = dialog.showAndWait().orElse("");
+
+            dialog.setHeaderText("Enter Current Semester:");
+            String currentSemester = dialog.showAndWait().orElse("");
+
+            dialog.setHeaderText("Enter Profile Photo:");
+            String profilePhoto = dialog.showAndWait().orElse("");
+
+            dialog.setHeaderText("Enter Subjects Registered:");
+            String subjectsRegistered = dialog.showAndWait().orElse("");
+
+            dialog.setHeaderText("Enter Thesis Title:");
+            String thesisTitle = dialog.showAndWait().orElse("");
+
+            dialog.setHeaderText("Enter Progress:");
+            String progress = dialog.showAndWait().orElse("");
+
+            dialog.setHeaderText("Enter Password:");
+            String password = dialog.showAndWait().orElse("");
+
+            String line = String.join(",", studentID, name, address, telephone, email, academicLevel, currentSemester,
+                    profilePhoto, subjectsRegistered, thesisTitle, progress, password);
+            out.write(line);
+            out.newLine();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+
+    public static void assignCourseToUser(String username, String course) {
+        try (BufferedWriter out = new BufferedWriter(new FileWriter("src/main/resources/Students.csv", true))) {
+            out.write(username + "," + course);
             out.newLine();
         } catch (IOException e) {
             e.printStackTrace();
@@ -128,12 +267,13 @@ class CSVLoader {
     }
 
     public static void addEvent(String event) {
-        try (PrintWriter out = new PrintWriter(new FileWriter("./Events.csv", true))) {
+        try (PrintWriter out = new PrintWriter(new FileWriter("src/main/resources/Events.csv", true))) {
             out.println(event);
         } catch (IOException e) {
             e.printStackTrace();
         }
     }
+
     public static ObservableList<String> loadCoursesForStudent(String username) {
         ObservableList<String> studentSpecificCourses = FXCollections.observableArrayList();
         try (BufferedReader br = new BufferedReader(new InputStreamReader(
@@ -149,6 +289,63 @@ class CSVLoader {
             e.printStackTrace();
         }
         return studentSpecificCourses;
+    }
+
+    public static void assignStudentToCourse(String studentId, String courseCode) {
+        try (BufferedWriter out = new BufferedWriter(
+                new FileWriter("src/main/resources/CourseAssignments.csv", true))) {
+            String line = studentId + "," + courseCode;
+            out.write(line);
+            out.newLine();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+
+    public static ObservableList<String> loadCourseAssignments() {
+        ObservableList<String> assignments = FXCollections.observableArrayList();
+        try (BufferedReader br = new BufferedReader(new InputStreamReader(
+                Objects.requireNonNull(CSVLoader.class.getResourceAsStream("/CourseAssignments.csv")),
+                StandardCharsets.UTF_8))) {
+            String line;
+            while ((line = br.readLine()) != null) {
+                assignments.add(line.trim());
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        return assignments;
+    }
+
+    public static ObservableList<String> getStudentCourses(String studentId) {
+        ObservableList<String> studentCourses = FXCollections.observableArrayList();
+        try (BufferedReader br = new BufferedReader(new InputStreamReader(
+                Objects.requireNonNull(CSVLoader.class.getResourceAsStream("/CourseAssignments.csv")),
+                StandardCharsets.UTF_8))) {
+            String line;
+            while ((line = br.readLine()) != null) {
+                String[] data = line.split(",");
+                if (data.length >= 2 && data[0].equals(studentId)) {
+                    studentCourses.add(data[1].trim());
+                }
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        return studentCourses;
+    }
+
+    public static String getCurrentUser() {
+        // Implementation to return the current user
+        // You'll need to maintain state of who is logged in
+        return null; // Replace with actual implementation
+    }
+
+    public static String getCurrentRole() {
+        // Implementation to return the role of the current user
+        // This should likely use the getCurrentUser method and look up the role
+        String user = getCurrentUser();
+        return user != null ? roles.get(user) : null;
     }
 
 }
