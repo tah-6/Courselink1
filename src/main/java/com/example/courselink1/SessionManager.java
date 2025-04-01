@@ -1,13 +1,18 @@
 package com.example.courselink1;
 
 public class SessionManager {
-    private static String currentUser;
-    private static String currentRole;
+    public static String currentUser;
+    public static String currentRole;
 
     public static void setCurrentUser(String username) {
         currentUser = username;
         currentRole = CSVLoader.roles.get(username);
     }
+    public static String setCurrentRole(String role) {
+        currentRole = role;
+        return currentRole;
+    }
+
 
     public static String getCurrentUser() {
         return currentUser;

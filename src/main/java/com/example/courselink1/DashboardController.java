@@ -1,735 +1,478 @@
 package com.example.courselink1;
-
-import javafx.scene.layout.VBox;
-import javafx.scene.control.*;
-import javafx.scene.layout.HBox;
-import javafx.scene.layout.Region;
-import javafx.scene.layout.Priority;
+import com.example.courselink1.AdminManagement;
+import javafx.application.Platform;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
-import javafx.collections.ObservableList;
+import javafx.scene.Cursor;
 import javafx.scene.Node;
+import javafx.scene.control.*;
 import javafx.scene.effect.DropShadow;
+import javafx.scene.image.Image;
+import javafx.scene.image.ImageView;
+import javafx.scene.layout.*;
 import javafx.scene.paint.Color;
-import javafx.animation.FadeTransition;
-import javafx.util.Duration;
+import javafx.scene.shape.Rectangle;
 
-/**
- * DashboardController handles all the dashboard interactions and UI updates
- * for the CourseLink application, connecting dashboard UI elements with
- * functionality from AdminManagement.
- */
+import java.io.InputStream;
+import java.util.HashMap;
+import java.util.Map;
+
 public class DashboardController {
 
-    private final VBox contentArea;
-    private final String PRIMARY_COLOR = "#1E3A8A";
-    private final String ACCENT_COLOR = "#3B82F6";
-    private final String BACKGROUND_COLOR = "#F0F2F5";
-    private final String CARD_COLOR = "#FFFFFF";
-    private final String TEXT_COLOR = "#1F2937";
+    // Constants for styling
+    private static final String PRIMARY_COLOR = "#3B82F6";
+    private static final String ACCENT_COLOR = "#EC4899";
+    private static final String CARD_COLOR = "white";
+    private static final String TEXT_COLOR = "#111827";
 
-    // Stats counters for dashboard
-    private int courseCount = 0;
-    private int assignmentCount = 0;
-    private int facultyCount = 0;
-    private int eventCount = 0;
+    // Core UI components
+    private BorderPane rootLayout;
+    private VBox contentArea;
+    private String currentRole;
+    private String currentUser;
 
-    public DashboardController(VBox contentArea) {
-        this.contentArea = contentArea;
+    // Navigation map to avoid repetitive switch statements
+    private final Map<String, Runnable> navigationMap = new HashMap<>();
 
-        // Initialize counters
-        try {
-            courseCount = CSVLoader.loadCourses().size();
-            facultyCount = CSVLoader.loadFaculty().size();
-            eventCount = AdminManagement.loadEvents().size();
-            assignmentCount = CSVLoader.loadCourseAssignments().size();
-        } catch (Exception e) {
-            System.out.println("Error loading initial counts: " + e.getMessage());
+    public DashboardController(String role, String username) {
+        this.currentRole = role;
+        this.currentUser = username;
+
+        // Initialize navigation map
+        setupNavigationMap();
+
+        // Initialize UI
+        rootLayout = new BorderPane();
+        contentArea = new VBox(20);
+        contentArea.setPadding(new Insets(25));
+        contentArea.setStyle("-fx-background-color: #F3F4F6;");
+
+        // Setup layout components
+        rootLayout.setLeft(createSidebar());
+        rootLayout.setTop(createHeader());
+        rootLayout.setCenter(new ScrollPane(contentArea));
+
+        // Show initial dashboard content
+        showDashboard(role, username);
+    }
+
+    private void setupNavigationMap() {
+        navigationMap.put("Dashboard", () -> showDashboard(currentRole, currentUser));
+        navigationMap.put("Course Management", () -> handleAdminSelection("Course Management"));
+        navigationMap.put("Student Management", () -> handleAdminSelection("Student Management"));
+        navigationMap.put("Faculty Management", () -> handleAdminSelection("Faculty Management"));
+        navigationMap.put("Subject Management", () -> handleAdminSelection("Subject Management"));
+        navigationMap.put("Settings", this::showSettingsPage);
+        navigationMap.put("Logout", this::showLoginScreen);
+    }
+
+    public BorderPane getRoot() {
+        return rootLayout;
+    }
+
+    private VBox createSidebar() {
+        VBox sidebar = new VBox(5);
+        sidebar.setPrefWidth(250);
+        sidebar.setStyle("-fx-background-color: " + PRIMARY_COLOR + ";");
+        sidebar.setPadding(new Insets(20, 0, 20, 0));
+
+        // Logo and title
+        Label appTitle = new Label("UniManager");
+        appTitle.setStyle("-fx-font-size: 22px; -fx-font-weight: bold; -fx-text-fill: white;");
+        appTitle.setPadding(new Insets(0, 0, 20, 15));
+
+        // Create menu items based on role
+        VBox menuItems = new VBox(5);
+        menuItems.setPadding(new Insets(10, 0, 10, 0));
+
+        // Admin has access to all menu items
+        if (currentRole.equals("Admin")) {
+            String[][] adminMenuItems = {
+                    {"Dashboard", "dashboard"},
+                    {"Courses", "book"},
+                    {"Students", "users"},
+                    {"Faculty", "user"},
+                    {"Subjects", "bookmark"}
+            };
+
+            for (String[] item : adminMenuItems) {
+                menuItems.getChildren().add(createMenuItem(item[0], item[1]));
+            }
+        } else {
+            // Simplified menu for non-admin users
+            menuItems.getChildren().addAll(
+                    createMenuItem("Dashboard", "dashboard"),
+                    createMenuItem("Courses", "book")
+            );
         }
+
+        // Settings and Logout options for all users
+        Separator separator = new Separator();
+        separator.setStyle("-fx-background-color: rgba(255,255,255,0.2);");
+        separator.setPadding(new Insets(10, 15, 10, 15));
+
+        VBox bottomMenu = new VBox(5);
+        bottomMenu.setPadding(new Insets(10, 0, 10, 0));
+        bottomMenu.getChildren().addAll(
+                createMenuItem("Settings", "settings"),
+                createMenuItem("Logout", "logout")
+        );
+
+        sidebar.getChildren().addAll(appTitle, menuItems, separator, bottomMenu);
+        return sidebar;
     }
 
-    /**
-     * Creates and sets up the dashboard with tiles for quick access
-     */
-    public void setupDashboard(String username, String role) {
+    private HBox createHeader() {
+        HBox header = new HBox();
+        header.setAlignment(Pos.CENTER_LEFT);
+        header.setPadding(new Insets(10, 20, 10, 20));
+        header.setStyle("-fx-background-color: white; -fx-border-color: transparent transparent #E5E7EB transparent;");
+
+        // Search box
+        TextField searchBox = new TextField();
+        searchBox.setPromptText("Search...");
+        searchBox.setPrefWidth(300);
+        searchBox.setStyle("-fx-background-color: #F9FAFB; -fx-border-color: #E5E7EB; -fx-border-radius: 20; -fx-background-radius: 20; -fx-padding: 8;");
+
+        Region spacer = new Region();
+        HBox.setHgrow(spacer, Priority.ALWAYS);
+
+        // User profile button
+        Button userButton = createIconButton("user");
+        userButton.setOnAction(e -> showUserProfile());
+
+        header.getChildren().addAll(searchBox, spacer, userButton);
+        return header;
+    }
+
+    private void showDashboard(String role, String username) {
         contentArea.getChildren().clear();
-
-        // Header section
-        Label welcomeHeader = new Label("Welcome, " + username);
-        welcomeHeader.setStyle("-fx-font-size: 24px; -fx-font-weight: bold; -fx-text-fill: " + TEXT_COLOR + ";");
-
-        Label roleLabel = new Label("You are logged in as: " + role);
-        roleLabel.setStyle("-fx-font-size: 14px; -fx-text-fill: " + TEXT_COLOR + "; -fx-opacity: 0.8;");
-
-        // Welcome card
-        VBox welcomeCard = createCard("Dashboard Overview",
-                "Access and manage university resources from your personalized dashboard.");
-
-        // Dashboard tiles row
-        HBox dashboardTiles = new HBox(15);
-        dashboardTiles.setAlignment(Pos.CENTER);
-
-        // Create the four main dashboard tiles
-        VBox coursesTile = createDashboardTile("📚", "Courses", "#3B82F6", String.valueOf(courseCount));
-        VBox assignmentsTile = createDashboardTile("📝", "Assignments", "#10B981", String.valueOf(assignmentCount));
-        VBox facultyTile = createDashboardTile("👨‍🏫", "Faculty", "#F59E0B", String.valueOf(facultyCount));
-        VBox eventsTile = createDashboardTile("📅", "Events", "#EF4444", String.valueOf(eventCount));
-
-        // Add click handlers to tiles
-        coursesTile.setOnMouseClicked(e -> handleTileClick("Course Management"));
-        assignmentsTile.setOnMouseClicked(e -> handleAssignmentsClick());
-        facultyTile.setOnMouseClicked(e -> handleTileClick("Faculty Management"));
-        eventsTile.setOnMouseClicked(e -> handleTileClick("Event Management"));
-
-        dashboardTiles.getChildren().addAll(coursesTile, assignmentsTile, facultyTile, eventsTile);
-
-        // Quick actions card
-        VBox quickActionsCard = createCard("Quick Actions", "Frequently used functions");
-
-        // Quick action buttons
-        HBox quickActions = new HBox(10);
-        quickActions.setPadding(new Insets(10, 0, 10, 0));
-
-        // Create action buttons with styling
-        Button addCourseBtn = createActionButton("Add Course", "📘");
-        Button addStudentBtn = createActionButton("Add Student", "👨‍🎓");
-        Button addFacultyBtn = createActionButton("Add Faculty", "👨‍🏫");
-        Button addEventBtn = createActionButton("Add Event", "🎭");
-
-        // Add click handlers
-        addCourseBtn.setOnAction(e -> showQuickAddDialog("Course"));
-        addStudentBtn.setOnAction(e -> CSVLoader.addStudent());
-        addFacultyBtn.setOnAction(e -> CSVLoader.addFaculty());
-        addEventBtn.setOnAction(e -> showQuickAddDialog("Event"));
-
-        quickActions.getChildren().addAll(addCourseBtn, addStudentBtn, addFacultyBtn, addEventBtn);
-        quickActionsCard.getChildren().add(quickActions);
-
-        // Recent activity card (if available)
-        VBox recentActivityCard = createCard("Recent Activity", "Your latest actions and notifications");
-        ListView<String> activityList = new ListView<>();
-        activityList.setPrefHeight(150);
-        activityList.getItems().addAll(
-                "System: Welcome to CourseLink",
-                "Account: Last login on " + java.time.LocalDate.now(),
-                "Courses: New course registrations open",
-                "Events: Upcoming university event this week"
-        );
-        recentActivityCard.getChildren().add(activityList);
-
-        // Add all components to content area
-        contentArea.getChildren().addAll(
-                welcomeHeader,
-                roleLabel,
-                createSpacer(20),
-                welcomeCard,
-                createSpacer(20),
-                dashboardTiles,
-                createSpacer(20),
-                quickActionsCard,
-                createSpacer(20),
-                recentActivityCard
-        );
-
-        // Animate the content appearance
-        fadeInContent();
+        createDashboardContent();
     }
 
-    /**
-     * Creates a card with title and description
-     */
-    private VBox createCard(String title, String description) {
-        VBox card = new VBox(10);
-        card.setPadding(new Insets(20));
-        card.setStyle("-fx-background-color: " + CARD_COLOR + "; -fx-background-radius: 8;");
+    private void createDashboardContent() {
+        // Title and description
+        VBox headerBox = new VBox(5,
+                createStyledLabel("Welcome, " + currentUser + "!", "-fx-font-size: 24px; -fx-font-weight: bold;"),
+                createStyledLabel("Here's an overview of your university management system.", "-fx-font-size: 14px; -fx-opacity: 0.8;")
+        );
+        headerBox.setPadding(new Insets(0, 0, 20, 0));
 
-        DropShadow cardShadow = new DropShadow();
-        cardShadow.setRadius(5);
-        cardShadow.setColor(Color.rgb(0, 0, 0, 0.1));
-        card.setEffect(cardShadow);
+        // Create dashboard tiles
+        HBox tilesRow1 = new HBox(20);
+        tilesRow1.getChildren().addAll(
+                createDashboardTile("book", "Courses", "24", PRIMARY_COLOR),
+                createDashboardTile("users", "Students", "120", ACCENT_COLOR),
+                createDashboardTile("user", "Faculty", "18", "#10B981")
+        );
 
-        Label titleLabel = new Label(title);
-        titleLabel.setStyle("-fx-font-size: 18px; -fx-font-weight: bold; -fx-text-fill: " + TEXT_COLOR + ";");
+        HBox tilesRow2 = new HBox(20);
+        tilesRow2.getChildren().addAll(
+                createDashboardTile("bookmark", "Subjects", "7", "#8B5CF6")
+        );
 
-        Label descLabel = new Label(description);
-        descLabel.setStyle("-fx-font-size: 14px; -fx-text-fill: " + TEXT_COLOR + "; -fx-opacity: 0.8;");
-
-        card.getChildren().addAll(titleLabel, descLabel);
-        return card;
+        contentArea.getChildren().addAll(headerBox, tilesRow1, new Region() {{ setPrefHeight(20); }}, tilesRow2);
     }
 
-    /**
-     * Creates a dashboard tile with icon, title and statistic
-     */
-    private VBox createDashboardTile(String icon, String title, String color, String count) {
-        VBox tile = new VBox(10);
+    private VBox createDashboardTile(String icon, String title, String count, String color) {
+        VBox tile = new VBox(15);
         tile.setAlignment(Pos.CENTER);
-        tile.setPrefWidth(180);
-        tile.setPrefHeight(120);
-        tile.setStyle("-fx-background-color: " + CARD_COLOR + "; -fx-background-radius: 8;");
-        tile.setCursor(javafx.scene.Cursor.HAND);
+        tile.setPadding(new Insets(20));
+        tile.setPrefSize(200, 150);
+        tile.setStyle("-fx-background-color: " + CARD_COLOR + "; -fx-background-radius: 8px;");
 
-        DropShadow tileShadow = new DropShadow();
-        tileShadow.setRadius(5);
-        tileShadow.setColor(Color.rgb(0, 0, 0, 0.1));
-        tile.setEffect(tileShadow);
+        // Add shadow and components
+        tile.setEffect(new DropShadow(5, 0, 2, Color.rgb(0, 0, 0, 0.1)));
+        tile.getChildren().addAll(
+                new ImageView(new Image(getClass().getResourceAsStream("/icons/" + icon + ".png"), 40, 40, true, true)),
+                createStyledLabel(count, "-fx-font-size: 24px; -fx-font-weight: bold;"),
+                createStyledLabel(title, "-fx-font-size: 14px;"),
+                new Rectangle(150, 5) {{ setFill(Color.web(color)); setArcWidth(5); setArcHeight(5); }}
+        );
 
-        Label iconLabel = new Label(icon);
-        iconLabel.setStyle("-fx-font-size: 30px;");
-
-        Label titleLabel = new Label(title);
-        titleLabel.setStyle("-fx-font-size: 16px; -fx-font-weight: bold; -fx-text-fill: " + TEXT_COLOR + ";");
-
-        Label countLabel = new Label(count);
-        countLabel.setStyle("-fx-font-size: 20px; -fx-text-fill: " + color + "; -fx-font-weight: bold;");
-
-        tile.getChildren().addAll(iconLabel, titleLabel, countLabel);
-
-        // Hover effect
-        tile.setOnMouseEntered(e -> {
-            tile.setStyle("-fx-background-color: " + CARD_COLOR + "; -fx-background-radius: 8; -fx-border-color: " + color + "; -fx-border-width: 2; -fx-border-radius: 8;");
-        });
-        tile.setOnMouseExited(e -> {
-            tile.setStyle("-fx-background-color: " + CARD_COLOR + "; -fx-background-radius: 8;");
+        // Add hover effect and click handler
+        applyHoverEffect(tile, CARD_COLOR);
+        tile.setOnMouseClicked(e -> {
+            System.out.println("Tile clicked: " + title);
+            String managementKey = title + " Management";
+            if (navigationMap.containsKey(managementKey)) {
+                navigationMap.get(managementKey).run();
+            }
+            e.consume();
         });
 
         return tile;
     }
 
-    /**
-     * Creates a styled action button
-     */
-    private Button createActionButton(String text, String icon) {
-        Button button = new Button(icon + " " + text);
-        button.setPadding(new Insets(8, 15, 8, 15));
-        button.setStyle("-fx-background-color: " + PRIMARY_COLOR + "; -fx-text-fill: white; -fx-background-radius: 5;");
+    private HBox createMenuItem(String text, String icon) {
+        HBox menuItem = new HBox(10);
+        menuItem.setAlignment(Pos.CENTER_LEFT);
+        menuItem.setPadding(new Insets(10, 15, 10, 15));
 
-        button.setOnMouseEntered(e ->
-                button.setStyle("-fx-background-color: " + ACCENT_COLOR + "; -fx-text-fill: white; -fx-background-radius: 5;"));
-        button.setOnMouseExited(e ->
-                button.setStyle("-fx-background-color: " + PRIMARY_COLOR + "; -fx-text-fill: white; -fx-background-radius: 5;"));
+        // Add icon if available
+        InputStream iconStream = getClass().getResourceAsStream("/icons/" + icon + ".png");
+        if (iconStream != null) {
+            menuItem.getChildren().add(new ImageView(new Image(iconStream, 18, 18, true, true)));
+        }
+
+        // Add text label
+        menuItem.getChildren().add(createStyledLabel(text, "-fx-font-size: 14px; -fx-text-fill: white;"));
+
+        // Add hover effect and click handler
+        menuItem.setOnMouseEntered(e -> {
+            menuItem.setStyle("-fx-background-color: rgba(255,255,255,0.1); -fx-background-radius: 5;");
+            menuItem.setCursor(Cursor.HAND);
+        });
+
+        menuItem.setOnMouseExited(e -> menuItem.setStyle("-fx-background-color: transparent;"));
+
+        menuItem.setOnMouseClicked(e -> {
+            System.out.println("Menu item clicked: " + text);
+            String managementKey = text + " Management";
+            if (navigationMap.containsKey(managementKey)) {
+                navigationMap.get(managementKey).run();
+            } else if (navigationMap.containsKey(text)) {
+                navigationMap.get(text).run();
+            }
+            e.consume();
+        });
+
+        return menuItem;
+    }
+
+    private Button createIconButton(String icon) {
+        Button button = new Button();
+        button.setPrefSize(40, 40);
+
+        InputStream iconStream = getClass().getResourceAsStream("/icons/" + icon + ".png");
+        if (iconStream != null) {
+            button.setGraphic(new ImageView(new Image(iconStream, 18, 18, true, true)));
+        }
+
+        button.setStyle("-fx-background-color: transparent; -fx-border-color: #E5E7EB; -fx-border-radius: 5; -fx-background-radius: 5;");
+
+        // Add hover effect
+        button.setOnMouseEntered(e -> {
+            button.setStyle("-fx-background-color: #F9FAFB; -fx-border-color: #E5E7EB; -fx-border-radius: 5;");
+            button.setCursor(Cursor.HAND);
+        });
+
+        button.setOnMouseExited(e -> {
+            button.setStyle("-fx-background-color: transparent; -fx-border-color: #E5E7EB; -fx-border-radius: 5;");
+        });
 
         return button;
     }
 
-    /**
-     * Creates a vertical spacer
-     */
-    private Region createSpacer(double height) {
-        Region spacer = new Region();
-        spacer.setPrefHeight(height);
-        return spacer;
+    private void handleAdminSelection(String selection) {
+        // Clear previous content
+        contentArea.getChildren().clear();
+
+        // Create page header with title and description
+        VBox pageHeader = new VBox(5);
+        pageHeader.getChildren().addAll(
+                createStyledLabel(selection, "-fx-font-size: 24px; -fx-font-weight: bold;"),
+                createStyledLabel("Manage " + selection.toLowerCase() + " in the university system", "-fx-font-size: 14px; -fx-opacity: 0.8;")
+        );
+
+        // Add breadcrumbs with functional navigation
+        HBox breadcrumbs = createBreadcrumbs(selection);
+
+        // Create action bar with search and add button
+        HBox actionBar = createActionBar(selection);
+
+        // Add components to content area
+        contentArea.getChildren().addAll(pageHeader, breadcrumbs, actionBar);
+
+        // Show appropriate management section
+        switch (selection) {
+            case "Subject Management" -> AdminManagement.showSubjectManagement(contentArea);
+            case "Course Management" -> AdminManagement.showCourseManagement(contentArea);
+            case "Student Management" -> AdminManagement.showStudentManagement(contentArea);
+            case "Faculty Management" -> AdminManagement.showFacultyManagement(contentArea);
+            default -> contentArea.getChildren().add(createStyledLabel("This section is not implemented yet.", "-fx-font-size: 16px;"));
+        }
     }
 
-    /**
-     * Handles dashboard tile clicks to navigate to appropriate management screen
-     */
-    private void handleTileClick(String selection) {
-        // Update content area with animation
-        fadeOutContent(() -> {
-            contentArea.getChildren().clear();
+    private HBox createBreadcrumbs(String currentPage) {
+        HBox breadcrumbs = new HBox(5);
+        breadcrumbs.setAlignment(Pos.CENTER_LEFT);
+        breadcrumbs.setPadding(new Insets(0, 0, 20, 0));
 
-            // Create styled header for the section
-            createSectionHeader(selection);
+        Label homeLink = createStyledLabel("Dashboard", "-fx-text-fill: " + PRIMARY_COLOR + "; -fx-cursor: hand;");
+        homeLink.setOnMouseClicked(e -> navigationMap.get("Dashboard").run());
 
-            // Handle the section based on selection
-            switch (selection) {
-                case "Course Management":
-                    showEnhancedCourseManagement();
-                    break;
-                case "Student Management":
-                    showEnhancedStudentManagement();
-                    break;
-                case "Faculty Management":
-                    showEnhancedFacultyManagement();
-                    break;
-                case "Event Management":
-                    showEnhancedEventManagement();
-                    break;
-            }
+        breadcrumbs.getChildren().addAll(
+                homeLink,
+                createStyledLabel(">", "-fx-text-fill: " + TEXT_COLOR + "; -fx-opacity: 0.5;"),
+                createStyledLabel(currentPage, "-fx-text-fill: " + TEXT_COLOR + "; -fx-opacity: 0.8;")
+        );
 
-            // Add back button
-            Button backButton = new Button("← Back to Dashboard");
-            backButton.setStyle("-fx-background-color: transparent; -fx-text-fill: " + PRIMARY_COLOR + "; -fx-font-weight: bold;");
-            backButton.setOnAction(e -> setupDashboard(CSVLoader.getCurrentUser(), CSVLoader.getCurrentRole()));
-            contentArea.getChildren().add(0, backButton);
-
-            fadeInContent();
-        });
+        return breadcrumbs;
     }
 
-    /**
-     * Creates a section header with title and description
-     */
-    private void createSectionHeader(String title) {
-        VBox header = new VBox(5);
-        header.setPadding(new Insets(20, 0, 20, 0));
-
-        Label titleLabel = new Label(title);
-        titleLabel.setStyle("-fx-font-size: 24px; -fx-font-weight: bold; -fx-text-fill: " + TEXT_COLOR + ";");
-
-        String description = "Manage " + title.toLowerCase().replace(" management", "s") + " in the university system";
-        Label descLabel = new Label(description);
-        descLabel.setStyle("-fx-font-size: 14px; -fx-text-fill: " + TEXT_COLOR + "; -fx-opacity: 0.8;");
-
-        header.getChildren().addAll(titleLabel, descLabel);
-        contentArea.getChildren().add(header);
-    }
-
-    /**
-     * Enhanced assignments tile click handler
-     */
-    private void handleAssignmentsClick() {
-        fadeOutContent(() -> {
-            contentArea.getChildren().clear();
-
-            createSectionHeader("Course Assignments");
-
-            HBox actionBar = new HBox(10);
-            actionBar.setPadding(new Insets(0, 0, 20, 0));
-
-            Button assignButton = createActionButton("Assign Student to Course", "👨‍🎓");
-            assignButton.setOnAction(e -> showAssignmentDialog());
-
-            actionBar.getChildren().add(assignButton);
-            contentArea.getChildren().add(actionBar);
-
-            // Create styled table view
-            TableView<String> table = createStyledTableView("Assignments");
-            TableColumn<String, String> column = new TableColumn<>("Student - Course Assignments");
-            column.setPrefWidth(500);
-            column.setCellValueFactory(data -> new javafx.beans.property.SimpleStringProperty(data.getValue()));
-            table.getColumns().add(column);
-
-            // Load data from CSVLoader
-            table.setItems(CSVLoader.loadCourseAssignments());
-
-            VBox tableCard = new VBox(table);
-            tableCard.setStyle("-fx-background-color: " + CARD_COLOR + "; -fx-background-radius: 8; -fx-padding: 15;");
-
-            DropShadow shadow = new DropShadow();
-            shadow.setRadius(5);
-            shadow.setColor(Color.rgb(0, 0, 0, 0.1));
-            tableCard.setEffect(shadow);
-
-            contentArea.getChildren().add(tableCard);
-
-            // Add back button
-            Button backButton = new Button("← Back to Dashboard");
-            backButton.setStyle("-fx-background-color: transparent; -fx-text-fill: " + PRIMARY_COLOR + "; -fx-font-weight: bold;");
-            backButton.setOnAction(e -> setupDashboard(CSVLoader.getCurrentUser(), CSVLoader.getCurrentRole()));
-            contentArea.getChildren().add(0, backButton);
-
-            fadeInContent();
-        });
-    }
-
-    /**
-     * Shows enhanced Course Management UI
-     */
-    private void showEnhancedCourseManagement() {
+    private HBox createActionBar(String section) {
         HBox actionBar = new HBox(10);
+        actionBar.setAlignment(Pos.CENTER_LEFT);
         actionBar.setPadding(new Insets(0, 0, 20, 0));
 
-        Button addButton = createActionButton("Add Course", "📘");
-        Button viewButton = createActionButton("View Courses", "📋");
+        // Add button with click handler
+        Button addButton = new Button("Add New");
+        addButton.setStyle("-fx-background-color: " + PRIMARY_COLOR + "; -fx-text-fill: white; -fx-font-weight: bold; -fx-background-radius: 5;");
+        addButton.setOnAction(e -> showAddDialog(section));
+
+        // Search field
         TextField searchField = new TextField();
-        searchField.setPromptText("Search courses...");
+        searchField.setPromptText("Search " + section.toLowerCase() + "...");
         searchField.setPrefWidth(300);
-        searchField.setStyle("-fx-background-color: #F9FAFB; -fx-border-color: #E5E7EB; -fx-border-radius: 5; -fx-background-radius: 5; -fx-padding: 8;");
+        searchField.setStyle("-fx-background-color: #F9FAFB; -fx-border-color: #E5E7EB; -fx-border-radius: 5; -fx-padding: 8;");
 
-        Region spacer = new Region();
-        HBox.setHgrow(spacer, Priority.ALWAYS);
-
-        addButton.setOnAction(e -> CSVLoader.addCourse());
-        viewButton.setOnAction(e -> showCoursesTable());
-
-        actionBar.getChildren().addAll(addButton, viewButton, spacer, searchField);
-        contentArea.getChildren().add(actionBar);
-
-        // Initial view - show courses table
-        showCoursesTable();
+        actionBar.getChildren().addAll(addButton, searchField);
+        return actionBar;
     }
 
-    /**
-     * Shows styled courses table
-     */
-    private void showCoursesTable() {
-        // Get existing nodes except the last one (which would be the table)
-        int nodeCount = contentArea.getChildren().size();
-        if (nodeCount > 2) {
-            contentArea.getChildren().remove(nodeCount - 1);
-        }
+    // Helper methods
+    private void showAddDialog(String section) {
+        String entityName = section.replace(" Management", "");
 
-        TableView<String> table = createStyledTableView("Courses");
-        TableColumn<String, String> column = new TableColumn<>("Available Courses");
-        column.setPrefWidth(500);
-        column.setCellValueFactory(data -> new javafx.beans.property.SimpleStringProperty(data.getValue()));
-        table.getColumns().add(column);
-        table.setItems(CSVLoader.loadCourses());
-
-        VBox tableCard = new VBox(table);
-        tableCard.setStyle("-fx-background-color: " + CARD_COLOR + "; -fx-background-radius: 8; -fx-padding: 15;");
-
-        DropShadow shadow = new DropShadow();
-        shadow.setRadius(5);
-        shadow.setColor(Color.rgb(0, 0, 0, 0.1));
-        tableCard.setEffect(shadow);
-
-        contentArea.getChildren().add(tableCard);
-    }
-
-    /**
-     * Shows enhanced Student Management UI
-     */
-    private void showEnhancedStudentManagement() {
-        HBox actionBar = new HBox(10);
-        actionBar.setPadding(new Insets(0, 0, 20, 0));
-
-        Button addButton = createActionButton("Add Student", "👨‍🎓");
-        Button viewButton = createActionButton("View Students", "📋");
-        TextField searchField = new TextField();
-        searchField.setPromptText("Search students...");
-        searchField.setPrefWidth(300);
-        searchField.setStyle("-fx-background-color: #F9FAFB; -fx-border-color: #E5E7EB; -fx-border-radius: 5; -fx-background-radius: 5; -fx-padding: 8;");
-
-        Region spacer = new Region();
-        HBox.setHgrow(spacer, Priority.ALWAYS);
-
-        addButton.setOnAction(e -> CSVLoader.addStudent());
-        viewButton.setOnAction(e -> showStudentsTable());
-
-        actionBar.getChildren().addAll(addButton, viewButton, spacer, searchField);
-        contentArea.getChildren().add(actionBar);
-
-        // Initial view - show students table
-        showStudentsTable();
-    }
-
-    /**
-     * Shows styled students table
-     */
-    private void showStudentsTable() {
-        // Get existing nodes except the last one (which would be the table)
-        int nodeCount = contentArea.getChildren().size();
-        if (nodeCount > 2) {
-            contentArea.getChildren().remove(nodeCount - 1);
-        }
-
-        TableView<String> table = createStyledTableView("Students");
-        TableColumn<String, String> column = new TableColumn<>("Enrolled Students");
-        column.setPrefWidth(500);
-        column.setCellValueFactory(data -> new javafx.beans.property.SimpleStringProperty(data.getValue()));
-        table.getColumns().add(column);
-        table.setItems(CSVLoader.loadStudents());
-
-        VBox tableCard = new VBox(table);
-        tableCard.setStyle("-fx-background-color: " + CARD_COLOR + "; -fx-background-radius: 8; -fx-padding: 15;");
-
-        DropShadow shadow = new DropShadow();
-        shadow.setRadius(5);
-        shadow.setColor(Color.rgb(0, 0, 0, 0.1));
-        tableCard.setEffect(shadow);
-
-        contentArea.getChildren().add(tableCard);
-    }
-
-    /**
-     * Shows enhanced Faculty Management UI
-     */
-    private void showEnhancedFacultyManagement() {
-        HBox actionBar = new HBox(10);
-        actionBar.setPadding(new Insets(0, 0, 20, 0));
-
-        Button addButton = createActionButton("Add Faculty", "👨‍🏫");
-        Button viewButton = createActionButton("View Faculty", "📋");
-        TextField searchField = new TextField();
-        searchField.setPromptText("Search faculty...");
-        searchField.setPrefWidth(300);
-        searchField.setStyle("-fx-background-color: #F9FAFB; -fx-border-color: #E5E7EB; -fx-border-radius: 5; -fx-background-radius: 5; -fx-padding: 8;");
-
-        Region spacer = new Region();
-        HBox.setHgrow(spacer, Priority.ALWAYS);
-
-        addButton.setOnAction(e -> CSVLoader.addFaculty());
-        viewButton.setOnAction(e -> showFacultyTable());
-
-        actionBar.getChildren().addAll(addButton, viewButton, spacer, searchField);
-        contentArea.getChildren().add(actionBar);
-
-        // Initial view - show faculty table
-        showFacultyTable();
-    }
-
-    /**
-     * Shows styled faculty table
-     */
-    private void showFacultyTable() {
-        // Get existing nodes except the last one (which would be the table)
-        int nodeCount = contentArea.getChildren().size();
-        if (nodeCount > 2) {
-            contentArea.getChildren().remove(nodeCount - 1);
-        }
-
-        TableView<String> table = createStyledTableView("Faculty");
-        TableColumn<String, String> column = new TableColumn<>("Faculty Members");
-        column.setPrefWidth(500);
-        column.setCellValueFactory(data -> new javafx.beans.property.SimpleStringProperty(data.getValue()));
-        table.getColumns().add(column);
-        table.setItems(CSVLoader.loadFaculty());
-
-        VBox tableCard = new VBox(table);
-        tableCard.setStyle("-fx-background-color: " + CARD_COLOR + "; -fx-background-radius: 8; -fx-padding: 15;");
-
-        DropShadow shadow = new DropShadow();
-        shadow.setRadius(5);
-        shadow.setColor(Color.rgb(0, 0, 0, 0.1));
-        tableCard.setEffect(shadow);
-
-        contentArea.getChildren().add(tableCard);
-    }
-
-    /**
-     * Shows enhanced Event Management UI
-     */
-    private void showEnhancedEventManagement() {
-        HBox actionBar = new HBox(10);
-        actionBar.setPadding(new Insets(0, 0, 20, 0));
-
-        Button addButton = createActionButton("Add Event", "🎭");
-        Button viewButton = createActionButton("View Events", "📋");
-        TextField searchField = new TextField();
-        searchField.setPromptText("Search events...");
-        searchField.setPrefWidth(300);
-        searchField.setStyle("-fx-background-color: #F9FAFB; -fx-border-color: #E5E7EB; -fx-border-radius: 5; -fx-background-radius: 5; -fx-padding: 8;");
-
-        Region spacer = new Region();
-        HBox.setHgrow(spacer, Priority.ALWAYS);
-
-        addButton.setOnAction(e -> showQuickAddDialog("Event"));
-        viewButton.setOnAction(e -> showEventsTable());
-
-        actionBar.getChildren().addAll(addButton, viewButton, spacer, searchField);
-        contentArea.getChildren().add(actionBar);
-
-        // Initial view - show events table
-        showEventsTable();
-    }
-
-    /**
-     * Shows styled events table
-     */
-    private void showEventsTable() {
-        // Get existing nodes except the last one (which would be the table)
-        int nodeCount = contentArea.getChildren().size();
-        if (nodeCount > 2) {
-            contentArea.getChildren().remove(nodeCount - 1);
-        }
-
-        TableView<String> table = createStyledTableView("Events");
-        TableColumn<String, String> column = new TableColumn<>("University Events");
-        column.setPrefWidth(500);
-        column.setCellValueFactory(data -> new javafx.beans.property.SimpleStringProperty(data.getValue()));
-        table.getColumns().add(column);
-        table.setItems(AdminManagement.loadEvents());
-
-        VBox tableCard = new VBox(table);
-        tableCard.setStyle("-fx-background-color: " + CARD_COLOR + "; -fx-background-radius: 8; -fx-padding: 15;");
-
-        DropShadow shadow = new DropShadow();
-        shadow.setRadius(5);
-        shadow.setColor(Color.rgb(0, 0, 0, 0.1));
-        tableCard.setEffect(shadow);
-
-        contentArea.getChildren().add(tableCard);
-    }
-
-    /**
-     * Shows a styled dialog for quick adding items
-     */
-    private void showQuickAddDialog(String itemType) {
         Dialog<String> dialog = new Dialog<>();
-        dialog.setTitle("Add " + itemType);
-        dialog.setHeaderText("Enter " + itemType + " Details");
+        dialog.setTitle("Add New " + entityName);
+        dialog.setHeaderText("Enter " + entityName.toLowerCase() + " details");
 
         // Set the button types
-        ButtonType addButtonType = new ButtonType("Add", ButtonBar.ButtonData.OK_DONE);
-        dialog.getDialogPane().getButtonTypes().addAll(addButtonType, ButtonType.CANCEL);
+        ButtonType saveButtonType = new ButtonType("Save", ButtonBar.ButtonData.OK_DONE);
+        dialog.getDialogPane().getButtonTypes().addAll(saveButtonType, ButtonType.CANCEL);
 
-        // Create the content
-        VBox content = new VBox(10);
-        content.setPadding(new Insets(20));
+        // Create form content based on entity type
+        GridPane grid = new GridPane();
+        grid.setHgap(10);
+        grid.setVgap(10);
+        grid.setPadding(new Insets(20, 150, 10, 10));
 
         TextField nameField = new TextField();
-        nameField.setPromptText(itemType + " Name");
+        nameField.setPromptText(entityName + " Name");
 
-        content.getChildren().add(nameField);
+        TextField codeField = new TextField();
+        codeField.setPromptText(entityName + " ID/Code");
 
-        // Add specific fields based on item type
-        if (itemType.equals("Event")) {
-            DatePicker datePicker = new DatePicker();
-            datePicker.setPromptText("Event Date");
-            content.getChildren().add(datePicker);
+        ComboBox<String> departmentCombo = new ComboBox<>();
+        departmentCombo.getItems().addAll("Computer Science", "Mathematics", "Physics", "Engineering");
+        departmentCombo.setPromptText("Select Department");
 
-            TextField locationField = new TextField();
-            locationField.setPromptText("Event Location");
-            content.getChildren().add(locationField);
-        } else if (itemType.equals("Course")) {
-            ComboBox<String> subjectCombo = new ComboBox<>();
-            subjectCombo.setPromptText("Select Subject");
-            subjectCombo.setItems(CSVLoader.loadSubjects());
-            content.getChildren().add(subjectCombo);
+        grid.add(new Label(entityName + " Name:"), 0, 0);
+        grid.add(nameField, 1, 0);
+        grid.add(new Label(entityName + " ID/Code:"), 0, 1);
+        grid.add(codeField, 1, 1);
+        grid.add(new Label("Department:"), 0, 2);
+        grid.add(departmentCombo, 1, 2);
 
-            TextField codeField = new TextField();
-            codeField.setPromptText("Course Code");
-            content.getChildren().add(codeField);
-
-            TextField creditsField = new TextField();
-            creditsField.setPromptText("Credits");
-            content.getChildren().add(creditsField);
-        }
-
-        dialog.getDialogPane().setContent(content);
+        dialog.getDialogPane().setContent(grid);
 
         // Request focus on the name field by default
-        nameField.requestFocus();
+        Platform.runLater(() -> nameField.requestFocus());
 
-        // Convert the result
+        // Convert the result when the save button is clicked
         dialog.setResultConverter(dialogButton -> {
-            if (dialogButton == addButtonType) {
+            if (dialogButton == saveButtonType) {
                 return nameField.getText();
             }
             return null;
         });
 
-        dialog.getDialogPane().getStylesheets().add(getClass().getResource("/styles.css").toExternalForm());
-
-        dialog.showAndWait().ifPresent(result -> {
-            if (!result.isEmpty()) {
-                if (itemType.equals("Event")) {
-                    CSVLoader.addEvent(result);
-                    refreshCounts();
-                    showAlert("Success", "Event added successfully!");
-                } else if (itemType.equals("Course")) {
-                    CSVLoader.addCourse();
-                    refreshCounts();
-                    showAlert("Success", "Course added successfully!");
-                }
-            }
+        dialog.showAndWait().ifPresent(name -> {
+            showAlert(entityName + " Added", "New " + entityName.toLowerCase() + " \"" + name + "\" has been added successfully.");
+            handleAdminSelection(section);
         });
     }
 
-    /**
-     * Shows a styled dialog for assigning students to courses
-     */
-    private void showAssignmentDialog() {
-        Dialog<Boolean> dialog = new Dialog<>();
-        dialog.setTitle("Assign Student to Course");
-        dialog.setHeaderText("Select Student and Course");
+    private void showSettingsPage() {
+        contentArea.getChildren().clear();
 
-        // Set the button types
-        ButtonType assignButtonType = new ButtonType("Assign", ButtonBar.ButtonData.OK_DONE);
-        dialog.getDialogPane().getButtonTypes().addAll(assignButtonType, ButtonType.CANCEL);
+        VBox settingsForm = new VBox(15);
+        settingsForm.setPadding(new Insets(20));
 
-        // Create the content
-        VBox content = new VBox(15);
-        content.setPadding(new Insets(20));
-
-        ComboBox<String> studentCombo = new ComboBox<>();
-        studentCombo.setPromptText("Select Student");
-        studentCombo.setItems(CSVLoader.loadStudents());
-        studentCombo.setPrefWidth(300);
-
-        ComboBox<String> courseCombo = new ComboBox<>();
-        courseCombo.setPromptText("Select Course");
-        courseCombo.setItems(CSVLoader.loadCourses());
-        courseCombo.setPrefWidth(300);
-
-        content.getChildren().addAll(
-                new Label("Student:"),
-                studentCombo,
-                new Label("Course:"),
-                courseCombo
+        // Add settings components
+        ToggleGroup themeGroup = new ToggleGroup();
+        HBox themeBox = new HBox(10,
+                createFixedWidthLabel("Theme:", 120),
+                new RadioButton("Light") {{ setToggleGroup(themeGroup); setSelected(true); }},
+                new RadioButton("Dark") {{ setToggleGroup(themeGroup); }}
         );
 
-        dialog.getDialogPane().setContent(content);
+        // Save button
+        Button saveButton = new Button("Save Settings");
+        saveButton.setStyle("-fx-background-color: " + PRIMARY_COLOR + "; -fx-text-fill: white;");
+        saveButton.setOnAction(e -> showAlert("Settings Saved", "Your settings have been updated successfully."));
 
-        // Convert the result
-        dialog.setResultConverter(dialogButton -> {
-            if (dialogButton == assignButtonType) {
-                String student = studentCombo.getValue();
-                String course = courseCombo.getValue();
-
-                if (student != null && course != null) {
-                    CSVLoader.assignStudentToCourse(student, course);
-                    refreshCounts();
-                    return true;
-                }
-            }
-            return false;
-        });
-
-        dialog.showAndWait().ifPresent(result -> {
-            if (result) {
-                showAlert("Success", "Student assigned to course successfully!");
-                // Refresh the assignments view
-                handleAssignmentsClick();
-            }
-        });
+        contentArea.getChildren().addAll(
+                createStyledLabel("Settings", "-fx-font-size: 24px; -fx-font-weight: bold;"),
+                settingsForm
+        );
+        settingsForm.getChildren().addAll(themeBox, saveButton);
     }
 
-    /**
-     * Creates a styled table view
-     */
-    private TableView<String> createStyledTableView(String type) {
-        TableView<String> table = new TableView<>();
-        table.setStyle("-fx-background-color: white; -fx-border-color: #E5E7EB; -fx-border-radius: 5;");
-        table.setPrefHeight(400);
+    private void showUserProfile() {
+        contentArea.getChildren().clear();
 
-        return table;
+        VBox profileBox = new VBox(15);
+        profileBox.setPadding(new Insets(20));
+
+        // Profile information
+        VBox infoBox = new VBox(5);
+        infoBox.setStyle("-fx-background-color: white; -fx-padding: 20; -fx-background-radius: 5;");
+        infoBox.getChildren().addAll(
+                new Label("Name: " + currentUser),
+                new Label("Role: " + currentRole),
+                new Label("Email: " + currentUser.toLowerCase() + "@university.edu")
+        );
+
+        // Edit profile button
+        Button editButton = new Button("Edit Profile");
+        editButton.setStyle("-fx-background-color: " + PRIMARY_COLOR + "; -fx-text-fill: white;");
+        editButton.setOnAction(e -> showAlert("Edit Profile", "Profile editing functionality would be implemented here."));
+
+        contentArea.getChildren().add(profileBox);
+        profileBox.getChildren().addAll(
+                createStyledLabel("User Profile", "-fx-font-size: 24px; -fx-font-weight: bold;"),
+                infoBox,
+                editButton
+        );
     }
 
-    /**
-     * Shows an alert dialog
-     */
-    private void showAlert(String title, String message) {
+    private void showLoginScreen() {
+        // Just a placeholder - in a real app you would navigate back to login screen
+        showAlert("Logout", "You have been logged out successfully.");
+    }
+
+    private void showAlert(String title, String content) {
         Alert alert = new Alert(Alert.AlertType.INFORMATION);
         alert.setTitle(title);
         alert.setHeaderText(null);
-        alert.setContentText(message);
+        alert.setContentText(content);
         alert.showAndWait();
     }
 
-    /**
-     * Refreshes the dashboard counts
-     */
-    private void refreshCounts() {
-        try {
-            courseCount = CSVLoader.loadCourses().size();
-            facultyCount = CSVLoader.loadFaculty().size();
-            eventCount = AdminManagement.loadEvents().size();
-            assignmentCount = CSVLoader.loadCourseAssignments().size();
-        } catch (Exception e) {
-            System.out.println("Error refreshing counts: " + e.getMessage());
-        }
+    // Utility methods to reduce code duplication
+    private Label createStyledLabel(String text, String style) {
+        Label label = new Label(text);
+        label.setStyle(style + "; -fx-text-fill: " + TEXT_COLOR + ";");
+        return label;
     }
 
-    /**
-     * Animation to fade in content
-     */
-    private void fadeInContent() {
-        FadeTransition fadeIn = new FadeTransition(Duration.millis(300), contentArea);
-        fadeIn.setFromValue(0);
+    private Label createFixedWidthLabel(String text, double width) {
+        Label label = new Label(text);
+        label.setPrefWidth(width);
+        return label;
     }
 
-    private void fadeOutContent(Runnable onFinished) {
-        FadeTransition fadeOut = new FadeTransition(Duration.millis(300), contentArea);
-        fadeOut.setFromValue(1.0);
-        fadeOut.setToValue(0.0);
-        fadeOut.setOnFinished(e -> {
-            // Execute the provided code after fade out completes
-            onFinished.run();
+    private void applyHoverEffect(Node node, String defaultColor) {
+        node.setOnMouseEntered(e -> {
+            node.setStyle(node.getStyle().replace(defaultColor, "#F9FAFB"));
+            node.setCursor(Cursor.HAND);
         });
-        fadeOut.play();
+
+        node.setOnMouseExited(e -> {
+            node.setStyle(node.getStyle().replace("#F9FAFB", defaultColor));
+        });
     }
 }

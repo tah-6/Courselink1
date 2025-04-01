@@ -130,6 +130,7 @@ public class Main extends Application {
                 SessionManager.setCurrentUser(username);
                 String role = roles.getOrDefault(username, "Student");
                 CSVLoader.loadCoursesForStudent(username);
+
                 fadeTransition(loginCard, false, () -> showDashboard(role, username));
             } else {
                 messageLabel.setText("Invalid username or password");
@@ -137,18 +138,12 @@ public class Main extends Application {
             }
         });
 
-        // Add "Remember me" checkbox
-        CheckBox rememberMe = new CheckBox("Remember me");
-        rememberMe.setStyle("-fx-text-fill: " + TEXT_COLOR + "; -fx-opacity: 0.8;");
-
-
         loginCard.getChildren().addAll(
                 subtitleLabel,
                 new Separator(),
                 userField,
                 passField,
                 loginButton,
-                rememberMe,
                 messageLabel
         );
 
@@ -239,8 +234,7 @@ public class Main extends Application {
         String[][] menuItems = {
                 {"Dashboard", "🏠"},
                 {"Courses", "📚"},
-                {"Calendar", "📅"},
-                {"Messages", "✉️"}
+
         };
 
         for (String[] item : menuItems) {
@@ -271,6 +265,29 @@ public class Main extends Application {
                 sidebar.getChildren().add(menuItem);
             }
         }
+
+            // Admin-specific menu items
+            if (role.equals("Faculty")) {
+                sidebar.getChildren().add(new Separator());
+
+                Label facultyLabel = new Label("FACULTY MANAGEMENT");
+                facultyLabel.setStyle("-fx-text-fill: #9CA3AF; -fx-font-size: 12px; -fx-font-weight: bold;");
+                facultyLabel.setPadding(new Insets(15, 0, 5, 10));
+                sidebar.getChildren().add(facultyLabel);
+
+                String[][] facultyItems = {
+                        {"Course Management", "📘"},
+                        {"Student Management", "👨‍🎓"},
+                        {"Event Management", "🎭"}
+                };
+
+                for (String[] item : facultyItems) {
+                    HBox menuItem = createMenuItem(item[0], item[1]);
+                    menuItem.setOnMouseClicked(e -> handleAdminSelection(item[0]));
+                    sidebar.getChildren().add(menuItem);
+                }
+            }
+
 
         // Logout at bottom
         Region spacer = new Region();
