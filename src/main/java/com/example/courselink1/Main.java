@@ -287,6 +287,19 @@ public class Main extends Application {
                     sidebar.getChildren().add(menuItem);
                 }
             }
+        if (role.equals("Student")) {
+
+            // Add Profile button to the sidebar options
+            HBox profileMenuItem = createMenuItem("My Profile", "user");
+            profileMenuItem.setOnMouseClicked(e -> {
+                contentArea.getChildren().clear();
+                StudentProfileController profileController = new StudentProfileController();
+                contentArea.getChildren().add(profileController.createProfileManagementView(SessionManager.currentUser));
+            });
+
+
+            sidebar.getChildren().add(profileMenuItem);
+        }
 
 
         // Logout at bottom
@@ -402,6 +415,7 @@ public class Main extends Application {
         // Hover effect
         tile.setOnMouseEntered(e -> {
             tile.setStyle("-fx-background-color: " + CARD_COLOR + "; -fx-background-radius: 8; -fx-border-color: " + color + "; -fx-border-width: 2; -fx-border-radius: 8;");
+
         });
         tile.setOnMouseExited(e -> {
             tile.setStyle("-fx-background-color: " + CARD_COLOR + "; -fx-background-radius: 8;");

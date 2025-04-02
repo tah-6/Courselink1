@@ -347,5 +347,68 @@ class CSVLoader {
         String user = getCurrentUser();
         return user != null ? roles.get(user) : null;
     }
+    public static void updateStudentProfile(String studentId, String name, String email, String phone, String photoUrl) {
+        try {
+            // Read all students
+            File file = new File("src/main/resources/Students.csv");
+            BufferedReader reader = new BufferedReader(new FileReader(file));
+            String header = reader.readLine();
+
+            StringBuilder newContent = new StringBuilder();
+            newContent.append(header).append("\n");
+
+            String line;
+            while ((line = reader.readLine()) != null) {
+                String[] data = line.split(",");
+                if (data[0].trim().equals(studentId)) {
+                    // Update the fields
+                    data[1] = name;
+                    data[4] = email;
+                    data[3] = phone;
+                    data[7] = photoUrl;
+
+                    // Reconstruct the line
+                    newContent.append(String.join(",", data)).append("\n");
+                } else {
+                    newContent.append(line).append("\n");
+                }
+            }
+            reader.close();
+
+            // Write updated content back to file
+            BufferedWriter writer = new BufferedWriter(new FileWriter(file));
+            writer.write(newContent.toString());
+            writer.close();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+
+    public static Map<String, String> getStudentProfile(String studentId) {
+        Map<String, String> profile = new HashMap<>();
+
+        try {
+            File file = new File("src/main/resources/Students.csv");
+            BufferedReader reader = new BufferedReader(new FileReader(file));
+            String header = reader.readLine();
+            String[] headerFields = header.split(",");
+
+            String line;
+            while ((line = reader.readLine()) != null) {
+                String[] data = line.split(",");
+                if (data[0].trim().equals(studentId)) {
+                    for (int i = 0; i < headerFields.length && i < data.length; i++) {
+                        profile.put(headerFields[i], data[i]);
+                    }
+                    break;
+                }
+            }
+            reader.close();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+
+        return profile;
+    }
 
 }

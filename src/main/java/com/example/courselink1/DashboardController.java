@@ -146,9 +146,12 @@ public class DashboardController {
     }
 
     private void showDashboard(String role, String username) {
-        contentArea.getChildren().clear();
-        createDashboardContent();
+
+
+
+
     }
+
 
     private void createDashboardContent() {
         // Title and description
